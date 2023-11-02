@@ -1,0 +1,19 @@
+(executable
+ (name models_waving_cubes)
+ (modules Models_waving_cubes)
+ (libraries raylib))
+
+(executable
+ (name models_skybox)
+ (modules Models_skybox)
+ (libraries raylib))
+
+(executable
+ (name models_animation)
+ (modules Models_animation)
+ (libraries raylib))
+
+(executable
+ (name models_mesh_generation)
+ (modules Models_mesh_generation)
+ (libraries raylib))

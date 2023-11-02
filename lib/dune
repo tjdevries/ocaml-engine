@@ -1,0 +1,5 @@
+(library
+ (name engine)
+ (libraries raylib core_kernel)
+ (flags
+  (:standard -open Core)))

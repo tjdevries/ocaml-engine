@@ -1,0 +1,4 @@
+(executable
+ (public_name engine)
+ (name main)
+ (libraries engine raylib core_kernel))

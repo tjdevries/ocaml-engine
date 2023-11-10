@@ -1,20 +1,14 @@
 let m'lady = `Greeted
 
-type 'a comp = (module Component.COMPONENT with type t = 'a)
-
-(* | COMPONENTS : TODO, could have multiple components at once? *)
-(* | WITH : { query : 'a t; with_ : (module Component) } -> 'a t *)
-(* | NOT : ... *)
-(* type 'a query = { return : 'a; filter : bool } *)
-
 type ('a, 'b) either = Left of 'a | Right of 'b
+type 'a comp = (module Component.COMPONENT with type t = 'a)
 
 type 'a t =
   | COMPONENT : 'a comp -> 'a t
   | AND : ('a t * 'b t) -> ('a * 'b) t
+  | OR : ('a t * 'b t) -> ('a, 'b) either t
   | NOT : { query : 'a t; condition : 'b t } -> 'a t
   | WITH : { query : 'a t; condition : 'b t } -> 'a t
-  | OR : ('a t * 'b t) -> ('a, 'b) either t
 
 let component : type a. (module Component.COMPONENT with type t = a) -> a t =
  fun (module Comp) -> COMPONENT (module Comp)

@@ -45,15 +45,22 @@ module TagMaker () : COMPONENT with type t = unit = struct
   end)
 end
 
+(** A store contains a mapping of entity ids -> component values.
+    These components are all the *same* COMPONENT, which is enforced
+    by good coding (hopefully). *)
 module Store = struct
   type t = (int, component) Hashtbl.t
 
   let empty () : t = Hashtbl.create (module Int)
   let find = Hashtbl.find
   let remove = Hashtbl.remove
+  let iteri = Hashtbl.iteri
   let set t key data = Hashtbl.set t ~key ~data
 end
 
+(** Lookup contains a map of component_id to Store,
+    which is used to go from a COMPONENT to a Store, which can
+    then be used to lookup entity values. *)
 module Lookup = struct
   type t = (component_id, Store.t) Hashtbl.t
 
@@ -64,7 +71,7 @@ module Lookup = struct
     Hashtbl.set t ~key:Comp.id ~data:store;
     store
 
-  (* TODO: Hide this funciton, should not be exposed *)
+  (* TODO: Hide this function, should not be exposed *)
   let find t (module Comp : COMPONENT) =
     match Hashtbl.find t Comp.id with
     | Some store -> store
@@ -85,10 +92,28 @@ module Lookup = struct
   (** Remove an entity from the lookup, deletes all associated components  *)
   let remove_entity t id =
     Hashtbl.iter t ~f:(fun store -> Store.remove store id)
+
+  let to_list :
+      type a. t -> (module COMPONENT with type t = a) -> (int * a) list =
+   fun t (module Comp) ->
+    let store = find t (module Comp) in
+    Hashtbl.to_alist store
+    |> List.map ~f:(fun (id, component) -> (id, Comp.of_component component))
+
+  (** Iterates through all components and finds matching entity sets *)
+  (* let iter (t : t) (query : 'a Query.t) : 'a list = *)
+  (*   (* Hashtbl.iter *) *)
+  (*   [] *)
 end
 
 module PlayerTag = TagMaker ()
 (** Marks the entity as a player  *)
+
+module EnemyTag = TagMaker ()
+(** Marks the entity as an enemy  *)
+
+module CameraTag = TagMaker ()
+(* Marks the entity as a camera *)
 
 module Health = ComponentMaker (struct
   type t = float

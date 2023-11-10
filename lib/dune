@@ -1,5 +1,5 @@
 (library
  (name engine)
- (libraries raylib core_kernel)
+ (libraries raylib core_kernel fmt)
  (flags
   (:standard -open Core)))

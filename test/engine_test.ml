@@ -1,3 +1,4 @@
+open Core
 open Engine
 
 module Example = Component.ComponentMaker (struct
@@ -117,6 +118,137 @@ let test_not_query () =
 
   ()
 
+let test_iter_with_query () =
+  let open Component in
+  let world = World.empty () in
+  let lookup = world.lookup in
+
+  (* 1 has Example and Health *)
+  Lookup.set lookup (module Example) 1 true;
+  Lookup.set lookup (module Health) 1 22.0;
+
+  (* 2 has just Example *)
+  Lookup.set lookup (module Example) 2 true;
+
+  (* 3 has just Health *)
+  Lookup.set lookup (module Health) 3 20.0;
+
+  let open Query in
+  let example_query = component (module Example) in
+  let health_query = component (module Health) in
+
+  let counter = ref 0 in
+  World.iter world example_query (fun _ _ -> incr counter);
+  if !counter <> 2 then failwith "Failed to count the examples";
+
+  let counter = ref 0.0 in
+  World.iter world health_query (fun _ health -> counter := !counter +. health);
+  if Float.(!counter <> 42.0) then
+    failwith "Failed to count the health components";
+
+  let length = World.to_list world example_query |> List.length in
+  if length <> 2 then failwith "Failed to get all the examples";
+
+  ()
+
+let test_iter_with_and_query () =
+  let open Component in
+  let world = World.empty () in
+  let lookup = world.lookup in
+
+  (* 1 has Example and Health *)
+  Lookup.set lookup (module Example) 1 true;
+  Lookup.set lookup (module Health) 1 22.0;
+
+  (* 2 has just Example *)
+  Lookup.set lookup (module Example) 2 true;
+
+  (* 3 has just Health *)
+  Lookup.set lookup (module Health) 3 20.0;
+
+  let open Query in
+  let example_query = component (module Example) in
+  let health_query = component (module Health) in
+  let both = Query.AND (example_query, health_query) in
+
+  let hash = World.to_hash world both in
+  if Hashtbl.length hash <> 1 then failwith "Failed to get BOTH values";
+
+  let result = Hashtbl.find_exn hash 1 in
+  (match result with
+  | true, 22.0 -> ()
+  | _ -> failwith "Not the right values for BOTH");
+
+  (* Add Health to entity 2 *)
+  Lookup.set lookup (module Health) 2 22.0;
+
+  let hash = World.to_hash world both in
+  if Hashtbl.length hash <> 2 then
+    failwith "Failed to find NEWLY ADDED both value";
+
+  ()
+
+let test_iter_with_and_query_perf () =
+  let open Component in
+  let world = World.empty () in
+  let lookup = world.lookup in
+
+  (* 1 has Example and Health *)
+  let player = 1 in
+  Lookup.set lookup (module Example) player true;
+  Lookup.set lookup (module PlayerTag) player ();
+  Lookup.set lookup (module Health) player 22.0;
+
+  (* 2 has Example and Health *)
+  let enemy = 2 in
+  Lookup.set lookup (module Example) enemy true;
+  Lookup.set lookup (module Health) enemy 22.0;
+
+  (* Make a lot of other entities *)
+  for i = 3 to 1_000_000 do
+    Lookup.set lookup (module Health) i (Float.of_int i)
+  done;
+
+  let open Query in
+  let example_query = component (module Example) in
+  let player_query = component (module PlayerTag) in
+  let health_query = component (module Health) in
+  let query = Query.AND (example_query, AND (player_query, health_query)) in
+
+  let hash = World.to_hash world query in
+  if Hashtbl.length hash <> 1 then failwith "Failed to get BOTH values";
+
+  let result = Hashtbl.find_exn hash 1 in
+  (match result with
+  | true, ((), 22.0) -> ()
+  | _ -> failwith "Not the right values for BOTH");
+
+  (* Let's look for things that ARE NOT the player *)
+  let query =
+    let query = AND (example_query, health_query) in
+    NOT { query; condition = player_query }
+  in
+
+  let hash = World.to_hash world query in
+  if Hashtbl.length hash <> 1 then failwith "Failed to get BOTH values";
+
+  (* Now let's do it with a WITH query *)
+  let _ =
+    let query =
+      WITH
+        { query = AND (example_query, health_query); condition = player_query }
+    in
+    let hash = World.to_hash world query in
+    if Hashtbl.length hash <> 1 then failwith "Failed to get BOTH values";
+
+    let result = Hashtbl.find_exn hash 1 in
+    match result with
+    | true, 22.0 -> ()
+    | _ -> failwith "Not the right values for BOTH"
+  in
+
+  ()
+
 let test_with_query () =
   let open Component in
   let lookup = Lookup.empty () in
@@ -158,5 +290,11 @@ let _ =
           test_case "can query components" `Quick test_query;
           test_case "can do not queries" `Quick test_not_query;
           test_case "can do with queries" `Quick test_with_query;
+        ] );
+      ( "iteration",
+        [
+          test_case "iterate over single query" `Quick test_iter_with_query;
+          test_case "iterate over multi query" `Quick test_iter_with_and_query;
+          test_case "iterate large query" `Quick test_iter_with_and_query_perf;
         ] );
     ]

@@ -4,7 +4,7 @@ let width = 3840
 let height = 2160
 let screen_width = 1000
 
-type state = { world : World.t; player : int }
+type state = { world : World.t }
 
 let setup () =
   set_config_flags [ Window_resizable ];
@@ -26,6 +26,9 @@ let setup () =
   let position = Vector2.create 15.0 15.0 in
   Component.Lookup.set world.lookup (module Component.Position) player position;
 
+  let _ = World.Entity.next_id () in
+  let _ = Camera2D.create in
+
   (* let camera = *)
   (*   Camera2D.create *)
   (*     (Vector2.create (Float.of_int width /. 2.0) (Float.of_int height /. 2.0)) *)
@@ -34,11 +37,21 @@ let setup () =
   (*        (Rectangle.y player.rect +. 20.0)) *)
   (*     0.0 1.5 *)
   (* in *)
-  { world; player }
+  { world }
 
+let player_query = Query.COMPONENT (module Component.PlayerTag)
 let position_query = Query.COMPONENT (module Component.Position)
 let sprite_query = Query.COMPONENT (module Component.Sprite)
 let drawable_query = Query.AND (position_query, sprite_query)
+
+module Drawable = struct
+  let query = drawable_query
+
+  let f _ (position, sprite) =
+    draw_texture_ex sprite position 1.0 0.05 Color.white
+end
+
+let systems = (module Drawable : System.SYSTEM) :: System.systems
 
 let rec loop state =
   match window_should_close () with
@@ -49,15 +62,14 @@ let rec loop state =
       let size = screen_width in
       draw_rectangle (-size / 2) (-size / 2) size size Color.blue;
 
-      let result =
-        Query.query_lookup state.world.lookup drawable_query state.player
-      in
-      let _ =
-        result
-        |> Option.map ~f:(fun (position, sprite) ->
-               draw_texture_ex sprite position 1.0 0.05 Color.white)
-      in
+      (* World.run state.world drawable_system; *)
+      List.iter systems ~f:(fun (module Sys : System.SYSTEM) ->
+          World.iter state.world Sys.query Sys.f);
 
+      (* World.iter state.world *)
+      (*   (Query.WITH { query = drawable_query; condition = player_query }) *)
+      (*   (fun _ (position, sprite) -> *)
+      (*     draw_texture_ex sprite position 1.0 0.05 Color.white); *)
       end_drawing ();
       loop state
 

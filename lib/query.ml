@@ -7,10 +7,14 @@ type 'a comp = (module Component.COMPONENT with type t = 'a)
 (* | NOT : ... *)
 (* type 'a query = { return : 'a; filter : bool } *)
 
-(* type ('a, 'b) either = Left of 'a | Right of 'b *)
-(* | OR : ('a t * 'b t) -> ('a, 'b) either t *)
+type ('a, 'b) either = Left of 'a | Right of 'b
 
-type 'a t = COMPONENT : 'a comp -> 'a t | AND : ('a t * 'b t) -> ('a * 'b) t
+type 'a t =
+  | COMPONENT : 'a comp -> 'a t
+  | AND : ('a t * 'b t) -> ('a * 'b) t
+  | NOT : { query : 'a t; condition : 'b t } -> 'a t
+  | WITH : { query : 'a t; condition : 'b t } -> 'a t
+  | OR : ('a t * 'b t) -> ('a, 'b) either t
 
 let component : type a. (module Component.COMPONENT with type t = a) -> a t =
  fun (module Comp) -> COMPONENT (module Comp)
@@ -31,6 +35,20 @@ let rec query_lookup : type a. Component.Lookup.t -> a t -> int -> a option =
       Option.bind l_val ~f:(fun l_val ->
           let r_val = query_lookup lookup r id in
           Option.map r_val ~f:(fun r_val -> (l_val, r_val)))
+  | NOT { query; condition } -> (
+      match query_lookup lookup condition id with
+      | None -> query_lookup lookup query id
+      | _ -> None)
+  | WITH { query; condition } ->
+      query_lookup lookup condition id
+      |> Option.bind ~f:(fun _ -> query_lookup lookup query id)
+  | OR (left, right) -> (
+      match query_lookup lookup left id with
+      | Some left -> Some (Left left)
+      | None -> (
+          match query_lookup lookup right id with
+          | Some right -> Some (Right right)
+          | None -> None))
 
 (* let rec f : type a. a t -> a = fun x -> _ *)
 (* let rec get_val : type a. a t -> a option = function *)

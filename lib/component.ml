@@ -36,7 +36,7 @@ struct
     !component_id
 end
 
-module TagMaker () : COMPONENT = struct
+module TagMaker () : COMPONENT with type t = unit = struct
   include ComponentMaker (struct
     type t = unit
 
@@ -50,6 +50,7 @@ module Store = struct
 
   let empty () : t = Hashtbl.create (module Int)
   let find = Hashtbl.find
+  let remove = Hashtbl.remove
   let set t key data = Hashtbl.set t ~key ~data
 end
 
@@ -80,9 +81,14 @@ module Lookup = struct
    fun t (module Comp) id value ->
     let store = find t (module Comp) in
     Store.set store id (Comp.to_component value)
+
+  (** Remove an entity from the lookup, deletes all associated components  *)
+  let remove_entity t id =
+    Hashtbl.iter t ~f:(fun store -> Store.remove store id)
 end
 
 module PlayerTag = TagMaker ()
+(** Marks the entity as a player  *)
 
 module Health = ComponentMaker (struct
   type t = float
@@ -90,4 +96,21 @@ module Health = ComponentMaker (struct
 
   let of_component = function Health t -> t | _ -> failwith "bad value"
   let to_component t = Health t
+end)
+
+module Position = ComponentMaker (struct
+  type t = Raylib.Vector2.t
+  type component += Vec of t
+
+  let of_component = function Vec t -> t | _ -> failwith "bad value"
+  let to_component t = Vec t
+end)
+
+(* We only do 2D sprites, so this should be fine for now *)
+module Sprite = ComponentMaker (struct
+  type t = Raylib.Texture2D.t
+  type component += Sprite of t
+
+  let of_component = function Sprite t -> t | _ -> failwith "bad value"
+  let to_component t = Sprite t
 end)

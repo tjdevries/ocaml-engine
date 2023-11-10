@@ -88,6 +88,66 @@ let test_query () =
 
   ()
 
+let test_not_query () =
+  let open Component in
+  let lookup = Lookup.empty () in
+
+  (* 1 has Example and Health *)
+  Lookup.set lookup (module Example) 1 true;
+  Lookup.set lookup (module Health) 1 1.0;
+
+  (* 2 has just Example *)
+  Lookup.set lookup (module Example) 2 true;
+
+  let open Query in
+  let example_query = component (module Example) in
+  let not_query =
+    NOT { query = example_query; condition = component (module Health) }
+  in
+
+  let should_be_none = query_lookup lookup not_query 1 in
+  (match should_be_none with
+  | None -> ()
+  | _ -> failwith "Should have been none");
+
+  let should_be_some = query_lookup lookup not_query 2 in
+  (match should_be_some with
+  | Some true -> ()
+  | _ -> failwith "Should have been none");
+
+  ()
+
+let test_with_query () =
+  let open Component in
+  let lookup = Lookup.empty () in
+
+  (* 1 has Example and Health *)
+  Lookup.set lookup (module Example) 1 false;
+  Lookup.set lookup (module Health) 1 1.0;
+  Lookup.set lookup (module PlayerTag) 1 ();
+
+  (* 2 has just Example *)
+  Lookup.set lookup (module Example) 2 true;
+
+  let open Query in
+  let example_query = component (module Example) in
+  let health_query = component (module Health) in
+  let query = AND (example_query, health_query) in
+  let player_query = component (module PlayerTag) in
+  let with_query = WITH { query; condition = player_query } in
+
+  let should_be_some = query_lookup lookup with_query 1 in
+  (match should_be_some with
+  | Some (false, 1.0) -> ()
+  | _ -> failwith "Should have been some");
+
+  let should_be_none = query_lookup lookup with_query 2 in
+  (match should_be_none with
+  | None -> ()
+  | _ -> failwith "Should have been none");
+
+  ()
+
 let _ =
   let open Alcotest in
   run "Component"
@@ -96,5 +156,7 @@ let _ =
         [
           test_case "can lookup components" `Quick test_lookup;
           test_case "can query components" `Quick test_query;
+          test_case "can do not queries" `Quick test_not_query;
+          test_case "can do with queries" `Quick test_with_query;
         ] );
     ]

@@ -57,22 +57,28 @@ module Lookup = struct
   type t = (component_id, Store.t) Hashtbl.t
 
   let empty () : t = Hashtbl.create (module Int)
-  let find = Hashtbl.find
 
   let add_component t (module Comp : COMPONENT) =
-    Hashtbl.set t ~key:Comp.id ~data:(Store.empty ())
+    let store = Store.empty () in
+    Hashtbl.set t ~key:Comp.id ~data:store;
+    store
+
+  (* TODO: Hide this funciton, should not be exposed *)
+  let find t (module Comp : COMPONENT) =
+    match Hashtbl.find t Comp.id with
+    | Some store -> store
+    | None -> add_component t (module Comp)
 
   let retrieve :
       type a. t -> (module COMPONENT with type t = a) -> int -> a option =
    fun t (module Comp) id ->
-    find t Comp.id
-    |> Option.bind ~f:(fun store -> Store.find store id)
-    |> Option.map ~f:Comp.of_component
+    let store = find t (module Comp) in
+    Store.find store id |> Option.map ~f:Comp.of_component
 
   let set : type a. t -> (module COMPONENT with type t = a) -> int -> a -> unit
       =
    fun t (module Comp) id value ->
-    let store = find t Comp.id |> Option.value_exn in
+    let store = find t (module Comp) in
     Store.set store id (Comp.to_component value)
 end
 

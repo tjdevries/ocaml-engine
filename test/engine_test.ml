@@ -22,9 +22,6 @@ end)
 let test_lookup () =
   let open Component in
   let lookup = Lookup.empty () in
-  Lookup.add_component lookup (module Example);
-  Lookup.add_component lookup (module Health);
-  Lookup.add_component lookup (module WithRecord);
   Lookup.set lookup (module Example) 1 true;
   Lookup.set lookup (module Example) 2 false;
   Lookup.set lookup (module Health) 1 1.0;
@@ -50,8 +47,6 @@ let test_lookup () =
 let test_query () =
   let open Component in
   let lookup = Lookup.empty () in
-  Lookup.add_component lookup (module Example);
-  Lookup.add_component lookup (module Health);
 
   (* Fill with some data *)
   Lookup.set lookup (module Example) 1 true;

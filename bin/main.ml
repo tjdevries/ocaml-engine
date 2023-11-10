@@ -109,7 +109,7 @@ type state = {
   camera : Camera2D.t;
   mobs : MobStore.t;
   bullets : Bullet.t list ref;
-  sword : Sword.t;
+  (* sword : Sword.t; *)
   tick : int;
 }
 
@@ -146,11 +146,11 @@ let setup () =
     MobStore.add mobs (Mob.random ())
   done;
 
-  let sword =
+  let _sword =
     Sword.
       { player; length = 100.0; width = 5.; speed = 10.0; status = Charging 10 }
   in
-  { player; camera; mobs; bullets = ref []; tick = 0; sword }
+  { player; camera; mobs; bullets = ref []; tick = 0 }
 
 module RectUtils = struct
   let direction dir ~source ~target =
@@ -163,7 +163,7 @@ module RectUtils = struct
       (Rectangle.width rect) (Rectangle.height rect)
 end
 
-let rec loop { player = player_t; camera; mobs; bullets; tick; sword } =
+let rec loop { player = player_t; camera; mobs; bullets; tick } =
   let player = player_t.rect in
   match window_should_close () with
   | true -> close_window ()
@@ -196,8 +196,7 @@ let rec loop { player = player_t; camera; mobs; bullets; tick; sword } =
           Rectangle.set_y mob.rect
             (Rectangle.y mob.rect +. (Vector2.y direction *. mob.speed)));
 
-      Sword.update sword;
-
+      (* Sword.update sword; *)
       MobStore.filter_inplace mobs ~f:(fun mob ->
           match
             List.find !bullets ~f:(fun bullet -> Bullet.can_hit bullet mob)
@@ -234,7 +233,8 @@ let rec loop { player = player_t; camera; mobs; bullets; tick; sword } =
         List.iter !bullets ~f:Bullet.draw;
 
         Player.draw player_t;
-        Sword.draw sword;
+
+        (* Sword.draw sword; *)
 
         (* Closest mob *)
         let () =
@@ -286,6 +286,6 @@ let rec loop { player = player_t; camera; mobs; bullets; tick; sword } =
       draw_text "- R to reset Zoom and Rotation" 40 100 10 Color.darkgray;
       end_drawing ();
 
-      loop { player = player_t; camera; mobs; bullets; tick = tick + 1; sword }
+      loop { player = player_t; camera; mobs; bullets; tick = tick + 1 }
 
 let () = setup () |> loop

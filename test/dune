@@ -1,2 +1,3 @@
 (test
- (name engine))
+ (name engine_test)
+ (libraries alcotest engine))

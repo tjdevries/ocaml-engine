@@ -288,4 +288,5 @@ let rec loop { player = player_t; camera; mobs; bullets; tick } =
 
       loop { player = player_t; camera; mobs; bullets; tick = tick + 1 }
 
-let () = setup () |> loop
+(* let () = setup () |> loop *)
+let _ = Engine.Game.main ()

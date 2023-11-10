@@ -5,11 +5,13 @@ end = struct
   let next_id () = Atomic.fetch_and_add entity_id 1
 end
 
-module World = struct
-  type t = { lookup : Component.Lookup.t }
+type t = { lookup : Component.Lookup.t }
 
-  (* let entity_store : int Bag.t = Bag.create () *)
-end
+let empty () =
+  let lookup = Component.Lookup.empty () in
+  { lookup }
+
+(* let entity_store : int Bag.t = Bag.create () *)
 
 (* module EntityStore = struct *)
 (*   let remove_entity world id = *)

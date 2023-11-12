@@ -1,5 +1,3 @@
-(* TODO: how to use systems to do this... *)
-
 (* TODO: How do we make Archetypes...
     Archetypes are combinations of components that (sometimes common ones, sometimes always) hold
     data together which let's you go really zoom zoom when doing  stuff.
@@ -11,7 +9,6 @@
 
 type 'a t = { query : 'a Query.t; f : int -> 'a -> unit }
 
-(* TODO: make a SystemMaker or something like that so I don't have to write the type t *)
 module type SYSTEM = sig
   type t
 
@@ -19,61 +16,36 @@ module type SYSTEM = sig
   val f : int -> t -> unit
 end
 
-module PlayerSystem : SYSTEM = struct
-  type t = unit
+(* Alternative to not have `type 'a t` for the system... *)
+(* let to_system : type a. a Query.t -> (int -> a -> unit) -> (module SYSTEM) = *)
+(*  fun query f -> *)
+(*   (module struct *)
+(*     type t = a *)
+(*     let query = query *)
+(*     let f = f *)
+(*   end) *)
 
-  let query = Query.component (module Component.PlayerTag)
-  let f _ _ = print_endline "found a player!"
-end
+let to_system : type a. a t -> (module SYSTEM) =
+ fun system ->
+  (module struct
+    type t = a
 
-module HealthSystem : SYSTEM = struct
-  type t = float
+    let query = system.query
+    let f = system.f
+  end)
 
-  let query = Query.component (module Component.Health)
-  let f id health = Fmt.pr "found some health: %d -> %f" id health
-end
+let player_system =
+  to_system
+    {
+      query = Query.component (module Component.PlayerTag);
+      f = (fun _ _ -> print_endline "found a player!");
+    }
 
-let systems : (module SYSTEM) list =
-  [ (module PlayerSystem); (module HealthSystem) ]
+let health_system =
+  to_system
+    {
+      query = Query.component (module Component.Health);
+      f = (fun id health -> Fmt.pr "found some health: %d -> %f" id health);
+    }
 
-let player_tag =
-  {
-    query = Query.component (module Component.PlayerTag);
-    f = (fun _ _ -> print_endline "found a player!");
-  }
-
-let health =
-  {
-    query = Query.component (module Component.Health);
-    f = (fun id health -> Fmt.pr "found some health: %d -> %f" id health);
-  }
-
-module SystemList = struct
-  type ('ty, 'v) t =
-    | [] : ('v, 'v) t
-    | ( :: ) : 'a * ('ty, 'v) t -> ('a -> 'ty, 'v) t
-
-  let cons x l = x :: l
-  let one x = [ x ]
-
-  let rec append : type a b c. (a, b) t -> (b, c) t -> (a, c) t =
-   fun l1 l2 -> match l1 with [] -> l2 | h :: t -> h :: append t l2
-
-  (* let rec iter : type a b. (a, b) t -> (a -> unit) -> unit = *)
-  (*  fun l f -> *)
-  (*   match l with *)
-  (*   | [] -> () *)
-  (*   | h :: t -> *)
-  (*       f h; *)
-  (*       iter f t *)
-end
-
-let x : _ SystemList.t = SystemList.[ player_tag; health ]
-
-(* type system = .. *)
-
-(* let run (s : 'a system) (a : 'a) : unit = s.f a *)
-(* World.iter state.world *)
-(*   (Query.WITH { query = drawable_query; condition = player_query }) *)
-(*   (fun _ (position, sprite) -> *)
-(*     draw_texture_ex sprite position 1.0 0.05 Color.white); *)
+let systems : (module SYSTEM) list = [ player_system; health_system ]

@@ -44,14 +44,16 @@ let position_query = Query.COMPONENT (module Component.Position)
 let sprite_query = Query.COMPONENT (module Component.Sprite)
 let drawable_query = Query.AND (position_query, sprite_query)
 
-module Drawable = struct
-  let query = drawable_query
+let drawable_system =
+  System.to_system
+    {
+      query = drawable_query;
+      f =
+        (fun _ (position, sprite) ->
+          draw_texture_ex sprite position 1.0 0.05 Color.white);
+    }
 
-  let f _ (position, sprite) =
-    draw_texture_ex sprite position 1.0 0.05 Color.white
-end
-
-let systems = (module Drawable : System.SYSTEM) :: System.systems
+let systems = drawable_system :: System.systems
 
 let rec loop state =
   match window_should_close () with

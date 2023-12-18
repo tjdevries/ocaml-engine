@@ -1,51 +1,73 @@
 (* TODO: How do we make Archetypes...
-    Archetypes are combinations of components that (sometimes common ones, sometimes always) hold
-    data together which let's you go really zoom zoom when doing  stuff.
+   Archetypes are combinations of components that (sometimes common ones, sometimes always) hold
+   data together which let's you go really zoom zoom when doing  stuff.
 
-    You just run through an array and do stuff :)
+   You just run through an array and do stuff :)
 
    Might not need archetypes if everything else is fast enough
 *)
 
-type 'a t = { query : 'a Query.t; f : int -> 'a -> unit }
+module QueryList = struct
+  type 'a t =
+    | QUERY : 'a Query.t -> 'a t
+    | COMBINE : ('a t * 'b t) -> ('a * 'b) t
 
-module type SYSTEM = sig
-  type t
-
-  val query : t Query.t
-  val f : int -> t -> unit
+  let query a = QUERY a
+  let combine a b = COMBINE (a, b)
 end
 
-(* Alternative to not have `type 'a t` for the system... *)
-(* let to_system : type a. a Query.t -> (int -> a -> unit) -> (module SYSTEM) = *)
-(*  fun query f -> *)
-(*   (module struct *)
-(*     type t = a *)
-(*     let query = query *)
-(*     let f = f *)
-(*   end) *)
+type 'q t =
+  { queries : 'q
+  (* ; resources : 'a resource list *)
+  (* ; event_writers : 'a *)
+  (* ; event_readers : 'a *)
+  }
 
-let to_system : type a. a t -> (module SYSTEM) =
- fun system ->
+module type SYSTEM = sig
+  type query
+
+  val query : query t
+  val execute : World.t -> query t -> unit
+end
+
+let single_system
+  : type a. a Query.t -> (a -> unit) -> (module SYSTEM with type query = a)
+  =
+  fun query _system ->
   (module struct
-    type t = a
+    type query = a
 
-    let query = system.query
-    let f = system.f
+    let query = { queries = QueryList.QUERY query }
+
+    (* TODO: I don't know what I want to write for this part yet. *)
+    let execute _ = assert false
   end)
+;;
 
-let player_system =
-  to_system
-    {
-      query = Query.component (module Component.PlayerTag);
-      f = (fun _ _ -> print_endline "found a player!");
-    }
+let make : type a. a t -> (World.t -> a t -> unit) -> (module SYSTEM) =
+  fun t f ->
+  (module struct
+    type query = a
 
-let health_system =
-  to_system
-    {
-      query = Query.component (module Component.Health);
-      f = (fun id health -> Fmt.pr "found some health: %d -> %f" id health);
-    }
+    let query = t
+    let execute = f
+  end)
+;;
 
-let systems : (module SYSTEM) list = [ player_system; health_system ]
+let iter : type a. a Query.t -> (a -> unit) -> (module SYSTEM) =
+  fun query f ->
+  (module struct
+    type query = a
+
+    let query = { queries = QueryList.QUERY query }
+
+    (* TODO: I don't know what I want to write for this part yet. *)
+    let execute world { queries; _ } =
+      match queries with
+      | QueryList.QUERY query -> World.iter_query world query f
+      | _ -> assert false
+    ;;
+  end)
+;;
+
+let systems : (module SYSTEM) list = []

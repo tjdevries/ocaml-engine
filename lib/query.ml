@@ -1,4 +1,5 @@
 let m'lady = `Greeted
+(* | ZIP : ('a t * 'b t) -> ('a list * 'b list) t *)
 
 type ('a, 'b) either = Left of 'a | Right of 'b
 type 'a comp = (module Component.COMPONENT with type t = 'a)
@@ -67,3 +68,5 @@ let rec query_lookup : type a. Component.Lookup.t -> a t -> int -> a option =
 (*   | [] -> [] *)
 (* let health = Query.(COMPONENT (module Health : Component with type t = float)) *)
 (* let cool = Query.[ health ] *)
+
+(* let add_children world entity children = assert false *)

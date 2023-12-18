@@ -12,9 +12,14 @@ $ opam depext raylib
 
 # TODO
 
-- Get the mobs to spawn from the outside of the screen in
-- Give the mobs a texture
-- Check if no mobs left -> win
+- Bundles
+- Commands
+- Resources
+- Events
+- Time?
+
+- Scheduling / Stagin
+  - https://bevy-cheatbook.github.io/programming/schedules.html
 
 ## Potential Features
 

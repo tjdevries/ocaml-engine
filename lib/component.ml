@@ -1,17 +1,5 @@
 open Core
 
-(* TODO: Don't expose that this is an int *)
-module ComponentID = struct
-  type t = int
-
-  let component_id = ref 0
-
-  let next () : t =
-    incr component_id;
-    !component_id
-  ;;
-end
-
 type component = ..
 type component += Tag of unit
 
@@ -51,22 +39,21 @@ module TagMaker () : COMPONENT with type t = unit = struct
     end)
 end
 
-
 (** A store contains a mapping of entity ids -> component values.
     These components are all the *same* COMPONENT, which is enforced
     by good coding (hopefully). *)
 module Store = struct
-  type t = (int, component, Int.comparator_witness) Map.t
+  type t = (EntityID.t, component, EntityID.comparator_witness) Map.t
 
-  let empty () : t = Map.empty (module Int)
+  let empty () : t = Map.empty (module EntityID)
   let find = Map.find
   let map = Map.map
-  let remove = Map.remove
+  let remove m k = if not (Map.mem m k) then m else Map.remove m k
   let iteri = Map.iteri
   let set t key data = Map.set t ~key ~data
 
   let to_sequence
-    : type a. t -> (module COMPONENT with type t = a) -> (ComponentID.t * a) Sequence.t
+    : type a. t -> (module COMPONENT with type t = a) -> (EntityID.t * a) Sequence.t
     =
     fun t (module Comp) ->
     let seq = Map.to_sequence t in
@@ -80,7 +67,7 @@ end
 module Lookup = struct
   type t = (ComponentID.t, Store.t) Hashtbl.t
 
-  let empty () : t = Hashtbl.create (module Int)
+  let empty () : t = Hashtbl.create (module ComponentID)
 
   let add_component t (module Comp : COMPONENT) =
     let store = Store.empty () in
@@ -95,13 +82,14 @@ module Lookup = struct
     | None -> add_component t (module Comp)
   ;;
 
-  let retrieve : type a. t -> (module COMPONENT with type t = a) -> int -> a option =
+  let retrieve : type a. t -> (module COMPONENT with type t = a) -> EntityID.t -> a option
+    =
     fun t (module Comp) id ->
     let store = find t (module Comp) in
     Store.find store id |> Option.map ~f:Comp.of_component
   ;;
 
-  let set : type a. t -> (module COMPONENT with type t = a) -> int -> a -> unit =
+  let set : type a. t -> (module COMPONENT with type t = a) -> EntityID.t -> a -> unit =
     fun t (module Comp) id value ->
     let store = find t (module Comp) in
     let store = Store.set store id (Comp.to_component value) in
@@ -110,23 +98,19 @@ module Lookup = struct
 
   (** Remove an entity from the lookup, deletes all associated components *)
   let remove_entity t id =
-    Hashtbl.iter t ~f:(fun store ->
-      (* TODO: Modifying while iterating... just modifying values, so hopefully fine? *)
+    Hashtbl.keys t
+    |> List.iter ~f:(fun key ->
+      let store = Hashtbl.find_exn t key in
       let store = Store.remove store id in
-      Hashtbl.set t ~key:id ~data:store)
+      Hashtbl.set t ~key ~data:store)
   ;;
 
-  let to_list : type a. t -> (module COMPONENT with type t = a) -> (int * a) list =
+  let to_list : type a. t -> (module COMPONENT with type t = a) -> (EntityID.t * a) list =
     fun t (module Comp) ->
     let store = find t (module Comp) in
     Map.to_alist store
     |> List.map ~f:(fun (id, component) -> id, Comp.of_component component)
   ;;
-
-  (** Iterates through all components and finds matching entity sets *)
-  (* let iter (t : t) (query : 'a Query.t) : 'a list = *)
-  (*   (* Hashtbl.iter *) *)
-  (*   [] *)
 end
 
 type component_value =

@@ -1,15 +1,38 @@
-module Entity : sig
-  val next_id : unit -> int
-end = struct
-  let entity_id = Atomic.make 0
-  let next_id () = Atomic.fetch_and_add entity_id 1
-end
+(* TODO: This isn't good *)
+let ( = ) = Stdlib.( = )
+let ( > ) = Stdlib.( > )
+let ( < ) = Stdlib.( < )
 
-type t = { lookup : Component.Lookup.t }
+type t =
+  { lookup : Component.Lookup.t
+  ; mutable commands : command list
+  }
+
+and command =
+  | Spawn of Bundle.t
+  | Despawn of EntityID.t
+  | Insert of (EntityID.t * Component.component_value)
 
 let empty () =
   let lookup = Component.Lookup.empty () in
-  { lookup }
+  { lookup; commands = [] }
+;;
+
+let spawn t bundle = t.commands <- Spawn bundle :: t.commands
+let despawn t id = t.commands <- Despawn id :: t.commands
+
+let execute_commands t =
+  let add_component world entity = function
+    | Component.VALUE (component, value) ->
+      Component.Lookup.set world.lookup component entity value
+  in
+  List.iter t.commands ~f:(function
+    | Spawn bundle ->
+      let entity = EntityID.next () in
+      List.iter bundle.values ~f:(fun value -> add_component t entity value)
+    | Despawn id -> Component.Lookup.remove_entity t.lookup id
+    | Insert (id, value) -> add_component t id value);
+  t.commands <- []
 ;;
 
 let combine_and_sequence left right =
@@ -64,7 +87,7 @@ let combine_with_sequence query condition =
     do_next_thing query condition)
 ;;
 
-let rec query_sequence : type a. t -> a Query.t -> (int * a) Sequence.t =
+let rec query_sequence : type a. t -> a Query.t -> (EntityID.t * a) Sequence.t =
   fun t query ->
   let open Component in
   match query with

@@ -31,30 +31,35 @@ module WithRecord = Component.ComponentMaker (struct
     let to_component b = WithRecord b
   end)
 
+(* Some example IDs *)
+let first_id = EntityID.next ()
+let second_id = EntityID.next ()
+let third_id = EntityID.next ()
+
 let test_lookup () =
   let open Component in
   let lookup = Lookup.empty () in
-  Lookup.set lookup (module Example) 1 true;
-  Lookup.set lookup (module Example) 2 false;
-  Lookup.set lookup (module Health) 1 1.0;
-  Lookup.set lookup (module WithRecord) 1 { cool = true; number = 1.0 };
-  let value = Lookup.retrieve lookup (module Example) 1 in
+  Lookup.set lookup (module Example) first_id true;
+  Lookup.set lookup (module Example) second_id false;
+  Lookup.set lookup (module Health) first_id 1.0;
+  Lookup.set lookup (module WithRecord) first_id { cool = true; number = 1.0 };
+  let value = Lookup.retrieve lookup (module Example) first_id in
   (match value with
    | Some true -> ()
    | _ -> failwith "NO");
-  let value = Lookup.retrieve lookup (module Health) 1 in
+  let value = Lookup.retrieve lookup (module Health) first_id in
   (match value with
    | Some 1.0 -> ()
    | _ -> failwith "NO");
-  let value = Lookup.retrieve lookup (module WithRecord) 1 in
+  let value = Lookup.retrieve lookup (module WithRecord) first_id in
   (match value with
    | Some { cool = true; number = 1.0 } -> ()
    | _ -> failwith "DID NOT MATCH");
-  let value = Lookup.retrieve lookup (module Example) 2 in
+  let value = Lookup.retrieve lookup (module Example) second_id in
   (match value with
    | Some false -> ()
    | _ -> failwith "NO");
-  let value = Lookup.retrieve lookup (module Example) 3 in
+  let value = Lookup.retrieve lookup (module Example) third_id in
   (match value with
    | None -> ()
    | _ -> failwith "NO");
@@ -65,31 +70,31 @@ let test_query () =
   let open Component in
   let lookup = Lookup.empty () in
   (* Fill with some data *)
-  Lookup.set lookup (module Example) 1 true;
-  Lookup.set lookup (module Health) 1 1.0;
-  Lookup.set lookup (module Example) 2 false;
-  Lookup.set lookup (module Health) 2 13.0;
-  Lookup.set lookup (module Example) 3 false;
+  Lookup.set lookup (module Example) first_id true;
+  Lookup.set lookup (module Health) first_id 1.0;
+  Lookup.set lookup (module Example) second_id false;
+  Lookup.set lookup (module Health) second_id 13.0;
+  Lookup.set lookup (module Example) third_id false;
   (* Create the queries *)
   let x = Query.component (module Example) in
   let y = Query.component (module Health) in
   let both = Query.AND (x, y) in
   (*  Do some querying *)
-  let result = Query.query_lookup lookup both 1 in
+  let result = Query.query_lookup lookup both first_id in
   (match result with
    | Some (true, 1.0) -> ()
    | _ -> failwith "Could not with match this");
-  let result = Query.query_lookup lookup both 2 in
+  let result = Query.query_lookup lookup both second_id in
   (match result with
    | Some (false, 13.0) -> ()
    | _ -> failwith "Could not with match this");
   (* Confirm that adding the `health *)
   let () =
-    (match Query.query_lookup lookup both 3 with
+    (match Query.query_lookup lookup both third_id with
      | None -> ()
      | _ -> failwith "Should not find this");
-    Lookup.set lookup (module Health) 3 3.0;
-    match Query.query_lookup lookup both 3 with
+    Lookup.set lookup (module Health) third_id 3.0;
+    match Query.query_lookup lookup both third_id with
     | Some (false, 3.0) -> ()
     | _ -> failwith "Should not find this"
   in
@@ -100,18 +105,18 @@ let test_not_query () =
   let open Component in
   let lookup = Lookup.empty () in
   (* 1 has Example and Health *)
-  Lookup.set lookup (module Example) 1 true;
-  Lookup.set lookup (module Health) 1 1.0;
-  (* 2 has just Example *)
-  Lookup.set lookup (module Example) 2 true;
+  Lookup.set lookup (module Example) first_id true;
+  Lookup.set lookup (module Health) first_id 1.0;
+  (* second_id has just Example *)
+  Lookup.set lookup (module Example) second_id true;
   let open Query in
   let example_query = component (module Example) in
   let not_query = NOT { query = example_query; condition = component (module Health) } in
-  let should_be_none = query_lookup lookup not_query 1 in
+  let should_be_none = query_lookup lookup not_query first_id in
   (match should_be_none with
    | None -> ()
    | _ -> failwith "Should have been none");
-  let should_be_some = query_lookup lookup not_query 2 in
+  let should_be_some = query_lookup lookup not_query second_id in
   (match should_be_some with
    | Some true -> ()
    | _ -> failwith "Should have been none");
@@ -123,12 +128,12 @@ let test_iter_with_query () =
   let world = World.empty () in
   let lookup = world.lookup in
   (* 1 has Example and Health *)
-  Lookup.set lookup (module Example) 1 true;
-  Lookup.set lookup (module Health) 1 22.0;
-  (* 2 has just Example *)
-  Lookup.set lookup (module Example) 2 true;
-  (* 3 has just Health *)
-  Lookup.set lookup (module Health) 3 20.0;
+  Lookup.set lookup (module Example) first_id true;
+  Lookup.set lookup (module Health) first_id 22.0;
+  (* second_id has just Example *)
+  Lookup.set lookup (module Example) second_id true;
+  (* third_id has just Health *)
+  Lookup.set lookup (module Health) third_id 20.0;
   let open Query in
   let example_query = component (module Example) in
   let health_query = component (module Health) in
@@ -148,12 +153,12 @@ let test_iter_with_and_query () =
   let world = World.empty () in
   let lookup = world.lookup in
   (* 1 has Example and Health *)
-  Lookup.set lookup (module Example) 1 true;
-  Lookup.set lookup (module Health) 1 22.0;
+  Lookup.set lookup (module Example) first_id true;
+  Lookup.set lookup (module Health) first_id 22.0;
   (* 2 has just Example *)
-  Lookup.set lookup (module Example) 2 true;
-  (* 3 has just Health *)
-  Lookup.set lookup (module Health) 3 20.0;
+  Lookup.set lookup (module Example) second_id true;
+  (* third_id has just Health *)
+  Lookup.set lookup (module Health) third_id 20.0;
   let open Query in
   let example_query = component (module Example) in
   let health_query = component (module Health) in
@@ -166,7 +171,7 @@ let test_iter_with_and_query () =
    | true, 22.0 -> ()
    | _ -> failwith "Not the right values for BOTH");
   (* Add Health to entity 2 *)
-  Lookup.set lookup (module Health) 2 22.0;
+  Lookup.set lookup (module Health) second_id 22.0;
   let count = World.query_sequence world both |> Sequence.length in
   if count <> 2 then failwith "Failed to find NEWLY ADDED both value";
   ()
@@ -177,17 +182,18 @@ let test_iter_with_and_query_perf () =
   let world = World.empty () in
   let lookup = world.lookup in
   (* 1 has Example and Health *)
-  let player = 1 in
+  let player = first_id in
   Lookup.set lookup (module Example) player true;
   Lookup.set lookup (module PlayerTag) player ();
   Lookup.set lookup (module Health) player 22.0;
   (* 2 has Example and Health *)
-  let enemy = 2 in
+  let enemy = second_id in
   Lookup.set lookup (module Example) enemy true;
   Lookup.set lookup (module Health) enemy 22.0;
   (* Make a lot of other entities *)
   for i = 3 to 1_000_000 do
-    Lookup.set lookup (module Health) i (Float.of_int i)
+    let id = EntityID.next () in
+    Lookup.set lookup (module Health) id (Float.of_int i)
   done;
   let open Query in
   let example_query = component (module Example) in
@@ -226,22 +232,22 @@ let test_with_query () =
   let open Component in
   let lookup = Lookup.empty () in
   (* 1 has Example and Health *)
-  Lookup.set lookup (module Example) 1 false;
-  Lookup.set lookup (module Health) 1 1.0;
-  Lookup.set lookup (module PlayerTag) 1 ();
+  Lookup.set lookup (module Example) first_id false;
+  Lookup.set lookup (module Health) first_id 1.0;
+  Lookup.set lookup (module PlayerTag) first_id ();
   (* 2 has just Example *)
-  Lookup.set lookup (module Example) 2 true;
+  Lookup.set lookup (module Example) second_id true;
   let open Query in
   let example_query = component (module Example) in
   let health_query = component (module Health) in
   let query = AND (example_query, health_query) in
   let player_query = component (module PlayerTag) in
   let with_query = WITH { query; condition = player_query } in
-  let should_be_some = query_lookup lookup with_query 1 in
+  let should_be_some = query_lookup lookup with_query first_id in
   (match should_be_some with
    | Some (false, 1.0) -> ()
    | _ -> failwith "Should have been some");
-  let should_be_none = query_lookup lookup with_query 2 in
+  let should_be_none = query_lookup lookup with_query second_id in
   (match should_be_none with
    | None -> ()
    | _ -> failwith "Should have been none");

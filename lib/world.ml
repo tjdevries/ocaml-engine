@@ -18,6 +18,17 @@ let empty () =
   { lookup; commands = [] }
 ;;
 
+(*
+   Player
+   - weapon
+
+   Mob
+   - weapon
+
+   spawn_with_children player (fun make -> make weapon)
+   -> weapon's transform is relative to player's transform
+*)
+
 let spawn t bundle = t.commands <- Spawn bundle :: t.commands
 let despawn t id = t.commands <- Despawn id :: t.commands
 

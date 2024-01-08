@@ -1,4 +1,4 @@
-open Raylib
+open Raytils
 open Component
 
 type player_stats = { mutable speed : float }
@@ -18,33 +18,27 @@ module PlayerStats = ComponentMaker (struct
 type player_bundle =
   { tag : unit [@PlayerTag]
   ; sprite : Sprite.t [@Sprite.T]
-  ; position : float * float [@Position]
+  ; transform : Transform.t [@Position]
   ; velocity : float * float [@Velocity]
   ; stats : player_stats [@PlayerStats]
   }
 (* [@@deriving bundle] *)
 
 (* TOOD: Generate this with ppx *)
-let player_bundle ~sprite ~position ~velocity ~stats =
+let player_bundle ~sprite ~transform ~velocity ~stats =
   Bundle.make
     [ Component.mk_value (module PlayerTag) ()
     ; Component.mk_value (module Sprite.T) sprite
-    ; Component.mk_value (module Position) position
+    ; Component.mk_value (module Transform.T) transform
     ; Component.mk_value (module Velocity) velocity
     ; Component.mk_value (module PlayerStats) stats
     ]
 ;;
 
-let create add_to_player =
-  let components =
-    [ mk_value (module PlayerTag) ()
-    ; mk_value
-        (module Sprite.T)
-        { texture = Textures.player (); scale = 0.05; rotation = 1.0 }
-    ; mk_value (module Position) (Vector2.create 15.0 15.0)
-    ; mk_value (module Velocity) (Vector2.create 1.0 1.0)
-    ; mk_value (module PlayerStats) { speed = 1.0 }
-    ]
-  in
-  List.iter components ~f:add_to_player
+let default () =
+  player_bundle
+    ~sprite:{ texture = Textures.player (); scale = 0.05; rotation = 1.0 }
+    ~transform:(Transform.of_xy 15.0 15.0)
+    ~velocity:(Vector2.create 1.0 1.0)
+    ~stats:{ speed = 1.0 }
 ;;

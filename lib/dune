@@ -1,6 +1,6 @@
 (library
  (name engine)
- (libraries raylib core_kernel fmt)
+ (libraries raylib core_kernel fmt ctypes ctypes-foreign)
  (flags
   (:standard -open Core))
  (preprocess

@@ -317,6 +317,17 @@ let test_map_sort () =
   ()
 ;;
 
+let test_clamp () =
+  let open Raytils in
+  let zero = Vector2.zero () in
+  let one = Vector2.one () in
+  let result = Vector2.clamp one zero zero in
+  let x, y = Vector2.to_tuple result in
+  Alcotest.(check int) "to zero" (int_of_float x) 0;
+  Alcotest.(check int) "to zero" (int_of_float y) 0;
+  ()
+;;
+
 let _ =
   let open Alcotest in
   run
@@ -334,5 +345,6 @@ let _ =
         ] )
       (* ("both", [ test_case "can combine both queries" `Quick test_both_queries ]); *)
     ; "Base.Map", [ test_case "sorted values for map" `Quick test_map_sort ]
+    ; "Raytils", [ test_case "can clamp" `Quick test_clamp ]
     ]
 ;;

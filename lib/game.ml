@@ -1,4 +1,4 @@
-open Raylib
+open Raytils
 
 let width = 3840
 let height = 2160
@@ -10,17 +10,12 @@ type state =
   }
 
 let setup () =
-  set_config_flags [ Window_resizable ];
-  init_window width height "raylib [core] example - 2d camera";
-  set_target_fps 60;
+  Raylib.set_config_flags [ Window_resizable ];
+  Raylib.init_window width height "raylib [core] example - 2d camera";
+  Raylib.set_target_fps 60;
   let world = World.empty () in
-  let add_component entity = function
-    | Component.VALUE (component, value) ->
-      Component.Lookup.set world.lookup component entity value
-  in
-  Player.create (add_component @@ EntityID.next ());
-  Mob.create_random (add_component @@ EntityID.next ());
-  (* let _ = World.Entity.next_id () in *)
+  World.spawn world (Player.default ());
+  World.spawn world (Mob.random_mob_bundle ());
   let camera =
     Camera2D.create
       (Vector2.create (Float.of_int width /. 2.0) (Float.of_int height /. 2.0))
@@ -34,17 +29,17 @@ let setup () =
 let player_query = Query.component (module Component.PlayerTag)
 let enemy_query = Query.component (module Component.EnemyTag)
 let player_stats_query = Query.component (module Player.PlayerStats)
-let position_query = Query.component (module Component.Position)
+let transform_query = Query.component (module Transform.T)
 let velocity_query = Query.component (module Component.Velocity)
 let sprite_query = Query.component (module Sprite.T)
-let drawable_query = Query.AND (position_query, sprite_query)
+let drawable_query = Query.AND (transform_query, sprite_query)
 
 let stats_system =
   System.foreach player_stats_query (fun stats ->
     if is_key_down Key.Space then stats.speed <- stats.speed +. 1.0)
 ;;
 
-let spawn_system =
+let spawn_mob_system =
   System.make_pure (fun world ->
     if is_key_pressed Key.E then World.spawn world (Mob.random_mob_bundle ());
     if is_key_pressed Key.R
@@ -76,8 +71,9 @@ let keyboard_system =
 
 let position_system =
   System.foreach
-    (Query.AND (velocity_query, position_query))
-    (fun (velocity, position) ->
+    (Query.AND (velocity_query, transform_query))
+    (fun (velocity, transform) ->
+      let position = transform.translation in
       (* TODO: Could filter out velocity that is 0? *)
       let new_position = Vector2.(add position velocity) in
       Vector2.set_x position (Vector2.x new_position);
@@ -90,10 +86,11 @@ let time = ref 5.0
 type timer = { time : float ref }
 
 let _ =
-  let query = Query.AND (velocity_query, position_query) in
+  let query = Query.AND (velocity_query, transform_query) in
   System.make { time } (fun world { time } ->
     let delta = !time in
-    World.iter_query world query (fun (velocity, position) ->
+    World.iter_query world query (fun (velocity, transform) ->
+      let position = transform.translation in
       let velocity = Vector2.scale velocity delta in
       let new_position = Vector2.(add position velocity) in
       Vector2.set_x position (Vector2.x new_position);
@@ -102,29 +99,32 @@ let _ =
 ;;
 
 let drawable_system =
-  System.foreach drawable_query (fun (position, sprite) ->
-    draw_texture_ex sprite.texture position sprite.rotation sprite.scale Color.white)
+  System.foreach drawable_query (fun (transform, sprite) ->
+    draw_texture_ex
+      sprite.texture
+      transform.translation
+      sprite.rotation
+      sprite.scale
+      Color.white)
 ;;
 
 let collision_system =
   (* let timer = Timer.new () in *)
-  let enemies = Query.WITH { query = position_query; condition = enemy_query } in
-  let players = Query.WITH { query = position_query; condition = player_query } in
+  let enemies = Query.WITH { query = transform_query; condition = enemy_query } in
+  let players = Query.WITH { query = transform_query; condition = player_query } in
   System.make_pure (fun world ->
     (* Timer.tick timer world.delta; *)
     let enemy_pos = World.query_sequence world enemies |> Sequence.to_list |> List.hd in
-    let _, player_pos =
-      World.query_sequence world players |> Sequence.to_list |> List.hd_exn
-    in
-    match enemy_pos with
-    | Some (_, enemy_pos) ->
-      if Float.(Vector2.distance enemy_pos player_pos < 50.0)
+    let player_pos = World.query_sequence world players |> Sequence.to_list |> List.hd in
+    match player_pos, enemy_pos with
+    | Some (_, player_pos), Some (_, enemy_pos) ->
+      if Float.(Vector2.distance enemy_pos.translation player_pos.translation < 50.0)
       then Fmt.failwith "OH YA COLLUISIONS BABY"
-    | None -> ())
+    | _ -> ())
 ;;
 
 let systems =
-  [ spawn_system
+  [ spawn_mob_system
   ; collision_system
   ; stats_system
   ; keyboard_system
@@ -134,6 +134,8 @@ let systems =
 ;;
 
 let rec loop state =
+  (* TODO: Figure out if we want to do something different than this *)
+  let open Raylib in
   match window_should_close () with
   | true -> close_window ()
   | false ->

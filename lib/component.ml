@@ -141,18 +141,6 @@ module Health = ComponentMaker (struct
     let to_component t = Health t
   end)
 
-module Position = ComponentMaker (struct
-    type t = Raylib.Vector2.t
-    type component += Vec of t
-
-    let of_component = function
-      | Vec t -> t
-      | _ -> failwith "bad value"
-    ;;
-
-    let to_component t = Vec t
-  end)
-
 module Velocity = ComponentMaker (struct
     type t = Raylib.Vector2.t
     type component += Vec of t
